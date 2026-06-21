@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
-import { Users, Search, Filter, Phone, Calendar, Tag, DollarSign, AlertCircle } from 'lucide-react';
+import { Users, Search, Filter, Phone, Calendar, Tag, DollarSign, AlertCircle, Star } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
+import { INTENTION_LEVEL_LABELS, INTENTION_LEVEL_COLORS } from '@/types';
+import type { IntentionLevel } from '@/types';
 import dayjs from 'dayjs';
 
 export function Customers() {
@@ -13,7 +15,7 @@ export function Customers() {
   const conversations = useAppStore((state) => state.conversations);
 
   const customers = useMemo(() => {
-    const seen = new Map<string, { id: string; name: string; phone: string; age: number; gender: 'female' | 'male'; avatar: string; tags: string[]; budget?: string; concerns?: string[]; createdAt: string }>();
+    const seen = new Map<string, { id: string; name: string; phone: string; age: number; gender: 'female' | 'male'; avatar: string; tags: string[]; budget?: string; concerns?: string[]; intentionLevel?: IntentionLevel; createdAt: string }>();
     for (const l of leads) {
       if (!seen.has(l.customerId)) {
         seen.set(l.customerId, l.customer);
@@ -37,6 +39,7 @@ export function Customers() {
 
   const [searchText, setSearchText] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedIntention, setSelectedIntention] = useState<IntentionLevel | null>(null);
 
   const allTags = Array.from(new Set(customers.flatMap(c => c.tags)));
 
@@ -45,6 +48,9 @@ export function Customers() {
       return false;
     }
     if (selectedTag && !customer.tags.includes(selectedTag)) {
+      return false;
+    }
+    if (selectedIntention && customer.intentionLevel !== selectedIntention) {
       return false;
     }
     return true;
@@ -69,7 +75,7 @@ export function Customers() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="w-64">
             <Input
               icon
@@ -106,6 +112,35 @@ export function Customers() {
               ))}
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-amber-400" />
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setSelectedIntention(null)}
+                className={`px-2.5 py-1 text-xs rounded-md transition-all ${
+                  selectedIntention === null
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-warm-gray-100 text-warm-gray-600 hover:bg-warm-gray-200'
+                }`}
+              >
+                全部意向
+              </button>
+              {(['high', 'medium', 'low'] as IntentionLevel[]).map(level => (
+                <button
+                  key={level}
+                  onClick={() => setSelectedIntention(level)}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-all flex items-center gap-1 ${
+                    selectedIntention === level
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-warm-gray-100 text-warm-gray-600 hover:bg-warm-gray-200'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${INTENTION_LEVEL_COLORS[level]}`} />
+                  {INTENTION_LEVEL_LABELS[level]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -117,7 +152,15 @@ export function Customers() {
                 <div className="flex items-start gap-3">
                   <Avatar src={customer.avatar} alt={customer.name} size="lg" />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-warm-gray-800">{customer.name}</h3>
+                    <h3 className="font-medium text-warm-gray-800 flex items-center gap-1.5">
+                      {customer.name}
+                      {customer.intentionLevel && (
+                        <span
+                          className={`w-2 h-2 rounded-full ${INTENTION_LEVEL_COLORS[customer.intentionLevel]}`}
+                          title={INTENTION_LEVEL_LABELS[customer.intentionLevel]}
+                        />
+                      )}
+                    </h3>
                     <p className="text-sm text-warm-gray-500">{customer.gender === 'female' ? '女' : '男'} · {customer.age}岁</p>
                     <div className="flex items-center gap-1 mt-1 text-xs text-warm-gray-400">
                       <Phone className="w-3 h-3" />
@@ -127,6 +170,15 @@ export function Customers() {
                 </div>
 
                 <div className="flex flex-wrap gap-1 mt-3">
+                  {customer.intentionLevel && (
+                    <Badge
+                      variant={customer.intentionLevel === 'high' ? 'danger' : customer.intentionLevel === 'medium' ? 'warning' : 'default'}
+                      size="sm"
+                    >
+                      <Star className="w-3 h-3 mr-0.5" />
+                      {INTENTION_LEVEL_LABELS[customer.intentionLevel]}
+                    </Badge>
+                  )}
                   {customer.tags.map((tag, idx) => (
                     <Badge key={idx} variant={tag === '高意向' ? 'primary' : 'default'} size="sm">
                       {tag}

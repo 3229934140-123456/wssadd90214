@@ -17,8 +17,8 @@ import {
   Plus,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import type { Customer, Lead } from '@/types';
-import { PROJECT_CATEGORY_LABELS, SOURCE_LABELS } from '@/types';
+import type { Customer, Lead, IntentionLevel } from '@/types';
+import { PROJECT_CATEGORY_LABELS, SOURCE_LABELS, INTENTION_LEVEL_LABELS } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -52,6 +52,7 @@ export function CustomerSidebar({ customerId, lead, onConvertToAppointment }: Cu
   const [isEditing, setIsEditing] = useState(false);
   const [editBudget, setEditBudget] = useState('');
   const [editConcerns, setEditConcerns] = useState<string[]>([]);
+  const [editIntentionLevel, setEditIntentionLevel] = useState<IntentionLevel | ''>('');
   const [newConcern, setNewConcern] = useState('');
 
   const toggleSection = (section: string) => {
@@ -63,6 +64,7 @@ export function CustomerSidebar({ customerId, lead, onConvertToAppointment }: Cu
   const startEditing = () => {
     setEditBudget(customer?.budget || '');
     setEditConcerns(customer?.concerns || []);
+    setEditIntentionLevel(customer?.intentionLevel || '');
     setIsEditing(true);
   };
 
@@ -70,6 +72,7 @@ export function CustomerSidebar({ customerId, lead, onConvertToAppointment }: Cu
     setIsEditing(false);
     setEditBudget('');
     setEditConcerns([]);
+    setEditIntentionLevel('');
     setNewConcern('');
   };
 
@@ -78,6 +81,7 @@ export function CustomerSidebar({ customerId, lead, onConvertToAppointment }: Cu
     updateCustomerInfo(customerId, {
       budget: editBudget || undefined,
       concerns: editConcerns.length > 0 ? editConcerns : undefined,
+      intentionLevel: editIntentionLevel || undefined,
     });
     setIsEditing(false);
   };
@@ -238,6 +242,22 @@ export function CustomerSidebar({ customerId, lead, onConvertToAppointment }: Cu
               {isEditing ? (
                 <>
                   <div>
+                    <p className="text-warm-gray-500 text-xs mb-1">意向等级</p>
+                    <div className="flex items-center gap-1.5">
+                      <Star className="w-4 h-4 text-amber-500" />
+                      <select
+                        value={editIntentionLevel}
+                        onChange={(e) => setEditIntentionLevel(e.target.value as IntentionLevel | '')}
+                        className="flex-1 h-8 px-2 text-sm border border-warm-gray-300 rounded-md text-warm-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      >
+                        <option value="">请选择</option>
+                        <option value="high">高意向</option>
+                        <option value="medium">中意向</option>
+                        <option value="low">低意向</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
                     <p className="text-warm-gray-500 text-xs mb-1">预算范围</p>
                     <div className="flex items-center gap-1">
                       <DollarSign className="w-4 h-4 text-green-500" />
@@ -292,6 +312,27 @@ export function CustomerSidebar({ customerId, lead, onConvertToAppointment }: Cu
                 </>
               ) : (
                 <>
+                  {customer.intentionLevel && (
+                    <div>
+                      <p className="text-warm-gray-500 text-xs mb-1">意向等级</p>
+                      <div className="flex items-center gap-1.5">
+                        <Star className={cn(
+                          'w-4 h-4',
+                          customer.intentionLevel === 'high' ? 'text-red-500 fill-red-500' :
+                          customer.intentionLevel === 'medium' ? 'text-amber-500 fill-amber-500' :
+                          'text-warm-gray-400 fill-warm-gray-400'
+                        )} />
+                        <span className={cn(
+                          'font-medium',
+                          customer.intentionLevel === 'high' ? 'text-red-600' :
+                          customer.intentionLevel === 'medium' ? 'text-amber-600' :
+                          'text-warm-gray-600'
+                        )}>
+                          {INTENTION_LEVEL_LABELS[customer.intentionLevel]}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {customer.budget && (
                     <div>
                       <p className="text-warm-gray-500 text-xs mb-1">预算范围</p>
@@ -314,8 +355,8 @@ export function CustomerSidebar({ customerId, lead, onConvertToAppointment }: Cu
                       </div>
                     </div>
                   )}
-                  {!customer.budget && (!customer.concerns || customer.concerns.length === 0) && (
-                    <p className="text-xs text-warm-gray-400">点击右上角编辑补充预算和顾虑</p>
+                  {!customer.intentionLevel && !customer.budget && (!customer.concerns || customer.concerns.length === 0) && (
+                    <p className="text-xs text-warm-gray-400">点击右上角编辑补充意向等级、预算和顾虑</p>
                   )}
                 </>
               )}

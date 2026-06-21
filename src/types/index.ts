@@ -8,6 +8,8 @@ export type AppointmentStatus = 'pending' | 'confirmed' | 'arrived' | 'cancelled
 
 export type UserRole = 'consultant' | 'supervisor' | 'admin';
 
+export type IntentionLevel = 'high' | 'medium' | 'low';
+
 export interface Customer {
   id: string;
   name: string;
@@ -18,6 +20,7 @@ export interface Customer {
   tags: string[];
   budget?: string;
   concerns?: string[];
+  intentionLevel?: IntentionLevel;
   createdAt: string;
 }
 
@@ -88,6 +91,9 @@ export interface QuickReply {
 export interface Appointment {
   id: string;
   conversationId?: string;
+  conversationStartTime?: string;
+  conversationProject?: string;
+  conversationConsultantName?: string;
   customerId: string;
   customer: Customer;
   consultantId: string;
@@ -193,4 +199,16 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   consultant: '咨询师',
   supervisor: '主管',
   admin: '管理员',
+};
+
+export const INTENTION_LEVEL_LABELS: Record<IntentionLevel, string> = {
+  high: '高意向',
+  medium: '中意向',
+  low: '低意向',
+};
+
+export const INTENTION_LEVEL_COLORS: Record<IntentionLevel, string> = {
+  high: 'bg-red-500',
+  medium: 'bg-amber-500',
+  low: 'bg-warm-gray-400',
 };

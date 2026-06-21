@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight, MessageCircle, User, Phone, Star, DollarSign, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { APPOINTMENT_STATUS_LABELS } from '@/types';
-import type { AppointmentStatus } from '@/types';
+import { AppointmentDetailModal } from '@/components/common/AppointmentDetailModal';
+import { APPOINTMENT_STATUS_LABELS, INTENTION_LEVEL_LABELS, INTENTION_LEVEL_COLORS } from '@/types';
+import type { AppointmentStatus, Appointment } from '@/types';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 
@@ -21,14 +22,19 @@ const statusFilters: { key: AppointmentStatus | 'all'; label: string; icon: any 
 
 export function Appointments() {
   const appointments = useAppStore((state) => state.appointments);
+  const updateAppointmentStatus = useAppStore((state) => state.updateAppointmentStatus);
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | 'all'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentDate, setCurrentDate] = useState(dayjs());
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
-  const filteredAppointments = appointments.filter(apt => {
-    if (statusFilter !== 'all' && apt.status !== statusFilter) return false;
-    return true;
-  });
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter(apt => {
+      if (statusFilter !== 'all' && apt.status !== statusFilter) return false;
+      return true;
+    });
+  }, [appointments, statusFilter]);
 
   const getStatusVariant = (status: AppointmentStatus) => {
     switch (status) {
@@ -41,9 +47,11 @@ export function Appointments() {
     }
   };
 
-  const todayAppointments = appointments.filter(
-    apt => dayjs(apt.appointmentTime).isSame(dayjs(), 'day')
-  );
+  const todayAppointments = useMemo(() => {
+    return appointments.filter(
+      apt => dayjs(apt.appointmentTime).isSame(dayjs(), 'day')
+    );
+  }, [appointments]);
 
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -71,6 +79,16 @@ export function Appointments() {
 
   const getAppointmentsForDate = (date: dayjs.Dayjs) => {
     return appointments.filter(apt => dayjs(apt.appointmentTime).isSame(date, 'day'));
+  };
+
+  const openDetail = (apt: Appointment) => {
+    setSelectedAppointment(apt);
+    setShowDetailModal(true);
+  };
+
+  const handleQuickStatusChange = (e: React.MouseEvent, aptId: string, status: AppointmentStatus) => {
+    e.stopPropagation();
+    updateAppointmentStatus(aptId, status);
   };
 
   return (
@@ -118,6 +136,9 @@ export function Appointments() {
         <div className="flex items-center gap-2">
           {statusFilters.map(filter => {
             const Icon = filter.icon;
+            const count = filter.key === 'all'
+              ? appointments.length
+              : appointments.filter(a => a.status === filter.key).length;
             return (
               <button
                 key={filter.key}
@@ -131,6 +152,7 @@ export function Appointments() {
               >
                 <Icon className="w-4 h-4" />
                 {filter.label}
+                <span className="text-xs opacity-70">({count})</span>
               </button>
             );
           })}
@@ -140,69 +162,131 @@ export function Appointments() {
       <div className="flex-1 overflow-auto p-6">
         {viewMode === 'list' ? (
           <div className="space-y-3">
-            {filteredAppointments.map(apt => (
-              <Card key={apt.id} hoverable>
+            {filteredAppointments.length === 0 ? (
+              <Card>
                 <CardBody>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 text-center">
-                      <p className="text-2xl font-bold text-primary-600">
-                        {dayjs(apt.appointmentTime).format('DD')}
-                      </p>
-                      <p className="text-xs text-warm-gray-400">
-                        {dayjs(apt.appointmentTime).format('MM月')}
-                      </p>
-                    </div>
-
-                    <div className="w-px h-12 bg-warm-gray-200" />
-
-                    <Avatar src={apt.customer.avatar} alt={apt.customer.name} size="md" />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-warm-gray-800">{apt.customer.name}</h3>
-                        <Badge variant={getStatusVariant(apt.status) as any} size="sm">
-                          {APPOINTMENT_STATUS_LABELS[apt.status]}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-warm-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {dayjs(apt.appointmentTime).format('HH:mm')}
-                        </span>
-                        <span>{apt.project}</span>
-                        <span>咨询师：{apt.consultant.name}</span>
-                        {apt.conversationId && (
-                          <span className="flex items-center gap-1 text-primary-500">
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            来自会话
-                          </span>
-                        )}
-                      </div>
-                      {apt.note && (
-                        <p className="text-xs text-warm-gray-400 mt-1 bg-warm-gray-50 px-2 py-1 rounded inline-block">
-                          备注：{apt.note}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {apt.status === 'pending' && (
-                        <>
-                          <Button size="sm" variant="outline">取消</Button>
-                          <Button size="sm">确认</Button>
-                        </>
-                      )}
-                      {apt.status === 'confirmed' && (
-                        <Button size="sm">到院确认</Button>
-                      )}
-                      {apt.status === 'arrived' && (
-                        <span className="text-sm text-green-600 font-medium">已完成</span>
-                      )}
-                    </div>
+                  <div className="text-center py-12 text-warm-gray-400">
+                    <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">暂无{statusFilter !== 'all' ? APPOINTMENT_STATUS_LABELS[statusFilter as AppointmentStatus] : ''}预约记录</p>
                   </div>
                 </CardBody>
               </Card>
-            ))}
+            ) : (
+              filteredAppointments.map(apt => (
+                <Card key={apt.id} hoverable onClick={() => openDetail(apt)}>
+                  <CardBody>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 text-center">
+                        <p className="text-2xl font-bold text-primary-600">
+                          {dayjs(apt.appointmentTime).format('DD')}
+                        </p>
+                        <p className="text-xs text-warm-gray-400">
+                          {dayjs(apt.appointmentTime).format('MM月')}
+                        </p>
+                      </div>
+
+                      <div className="w-px h-12 bg-warm-gray-200" />
+
+                      <Avatar src={apt.customer.avatar} alt={apt.customer.name} size="md" />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-warm-gray-800">
+                            {apt.customer.name}
+                            {apt.customer.intentionLevel && (
+                              <span
+                                className={`inline-block w-2 h-2 rounded-full ml-1.5 ${INTENTION_LEVEL_COLORS[apt.customer.intentionLevel]}`}
+                                title={INTENTION_LEVEL_LABELS[apt.customer.intentionLevel]}
+                              />
+                            )}
+                          </h3>
+                          <Badge variant={getStatusVariant(apt.status) as any} size="sm">
+                            {APPOINTMENT_STATUS_LABELS[apt.status]}
+                          </Badge>
+                          {apt.customer.intentionLevel && apt.customer.intentionLevel === 'high' && (
+                            <Badge variant="danger" size="sm">高意向</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-warm-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {dayjs(apt.appointmentTime).format('HH:mm')}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <User className="w-3.5 h-3.5" />
+                            {apt.project}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3.5 h-3.5" />
+                            咨询师：{apt.consultant.name}
+                          </span>
+                          {apt.conversationId && apt.conversationStartTime && (
+                            <span className="flex items-center gap-1 text-primary-600 font-medium">
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              {dayjs(apt.conversationStartTime).format('MM-DD HH:mm')} 咨询
+                              {apt.conversationProject && ` · ${apt.conversationProject}`}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-2">
+                          {apt.customer.budget && (
+                            <span className="text-xs text-green-600 flex items-center gap-0.5">
+                              <DollarSign className="w-3 h-3" />
+                              {apt.customer.budget}
+                            </span>
+                          )}
+                          {apt.customer.concerns && apt.customer.concerns.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-amber-500" />
+                              <div className="flex flex-wrap gap-1">
+                                {apt.customer.concerns.slice(0, 2).map((c, idx) => (
+                                  <span key={idx} className="text-xs text-amber-600">{c}</span>
+                                ))}
+                                {apt.customer.concerns.length > 2 && (
+                                  <span className="text-xs text-warm-gray-400">+{apt.customer.concerns.length - 2}</span>
+                                )}
+                              </div>
+                            </span>
+                          )}
+                        </div>
+                        {apt.note && (
+                          <p className="text-xs text-warm-gray-400 mt-1 bg-warm-gray-50 px-2 py-1 rounded inline-block">
+                            备注：{apt.note}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        {apt.status === 'pending' && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={(e) => handleQuickStatusChange(e, apt.id, 'cancelled')}>
+                              取消
+                            </Button>
+                            <Button size="sm" onClick={(e) => handleQuickStatusChange(e, apt.id, 'confirmed')}>
+                              确认
+                            </Button>
+                          </>
+                        )}
+                        {apt.status === 'confirmed' && (
+                          <Button size="sm" onClick={(e) => handleQuickStatusChange(e, apt.id, 'arrived')}>
+                            到院确认
+                          </Button>
+                        )}
+                        {apt.status === 'arrived' && (
+                          <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            已完成
+                          </span>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => openDetail(apt)}>
+                          详情
+                        </Button>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              ))
+            )}
           </div>
         ) : (
           <Card>
@@ -273,13 +357,23 @@ export function Appointments() {
                         {dayAppointments.slice(0, 2).map(apt => (
                           <div
                             key={apt.id}
+                            onClick={(e) => { e.stopPropagation(); openDetail(apt); }}
                             className="text-xs px-1.5 py-0.5 rounded bg-primary-50 text-primary-700 truncate cursor-pointer hover:bg-primary-100"
+                            title={`${apt.customer.name} - ${apt.project}`}
                           >
                             {dayjs(apt.appointmentTime).format('HH:mm')} {apt.customer.name}
+                            {apt.customer.intentionLevel === 'high' && (
+                              <span className="ml-0.5 text-red-500">★</span>
+                            )}
                           </div>
                         ))}
                         {dayAppointments.length > 2 && (
-                          <div className="text-xs text-warm-gray-400">+{dayAppointments.length - 2} 更多</div>
+                          <div
+                            onClick={(e) => { e.stopPropagation(); openDetail(dayAppointments[2]); }}
+                            className="text-xs text-warm-gray-400 cursor-pointer hover:text-warm-gray-600"
+                          >
+                            +{dayAppointments.length - 2} 更多
+                          </div>
                         )}
                       </div>
                     </div>
@@ -290,6 +384,15 @@ export function Appointments() {
           </Card>
         )}
       </div>
+
+      <AppointmentDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedAppointment(null);
+        }}
+        appointment={selectedAppointment}
+      />
     </div>
   );
 }

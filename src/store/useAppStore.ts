@@ -24,6 +24,8 @@ interface AppState {
   markLeadInvalid: (leadId: string, reason: string) => void;
   convertToAppointment: (leadId: string, conversationId: string, appointmentData: Partial<Appointment>) => Appointment | null;
   hasPendingAppointment: (customerId: string) => boolean;
+  updateAppointmentStatus: (appointmentId: string, status: Appointment['status']) => void;
+  getAppointmentById: (appointmentId: string) => Appointment | undefined;
 
   sendMessage: (conversationId: string, content: string, senderId: string) => void;
   addConversation: (conversation: Conversation) => void;
@@ -156,10 +158,14 @@ export const useAppStore = create<AppState>()(
         );
         if (existingPending) return existingPending;
 
+        const conversation = get().conversations.find(c => c.id === conversationId);
         const now = new Date().toISOString();
         const newAppointment: Appointment = {
           id: `appt_${Date.now()}`,
           conversationId,
+          conversationStartTime: conversation?.startTime,
+          conversationProject: lead.project,
+          conversationConsultantName: lead.consultant?.name,
           customerId: lead.customerId,
           customer: lead.customer,
           consultantId: lead.consultantId || '',
@@ -283,6 +289,18 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           qualityReviews: [newReview, ...state.qualityReviews],
         }));
+      },
+
+      updateAppointmentStatus: (appointmentId, status) => {
+        set((state) => ({
+          appointments: state.appointments.map(a =>
+            a.id === appointmentId ? { ...a, status } : a
+          ),
+        }));
+      },
+
+      getAppointmentById: (appointmentId) => {
+        return get().appointments.find(a => a.id === appointmentId);
       },
     }),
     {
