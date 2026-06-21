@@ -92,6 +92,7 @@ export interface Appointment {
   consultantId: string;
   consultant: Consultant;
   project: string;
+  projectCategory: ProjectCategory;
   appointmentTime: string;
   status: AppointmentStatus;
   note?: string;

@@ -12,12 +12,17 @@ import {
   Star,
   History,
   FileText,
+  Edit3,
+  Check,
+  X,
+  Plus,
 } from 'lucide-react';
 import type { Customer, Lead } from '@/types';
 import { PROJECT_CATEGORY_LABELS, SOURCE_LABELS } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 
@@ -25,15 +30,52 @@ interface CustomerSidebarProps {
   customer: Customer | null;
   lead?: Lead | null;
   onConvertToAppointment?: () => void;
+  onUpdateCustomerInfo?: (updates: { budget?: string; concerns?: string[] }) => void;
 }
 
-export function CustomerSidebar({ customer, lead, onConvertToAppointment }: CustomerSidebarProps) {
+export function CustomerSidebar({ customer, lead, onConvertToAppointment, onUpdateCustomerInfo }: CustomerSidebarProps) {
   const [expandedSections, setExpandedSections] = useState<string[]>(['basic', 'intent']);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editBudget, setEditBudget] = useState('');
+  const [editConcerns, setEditConcerns] = useState<string[]>([]);
+  const [newConcern, setNewConcern] = useState('');
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) =>
       prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]
     );
+  };
+
+  const startEditing = () => {
+    setEditBudget(customer?.budget || '');
+    setEditConcerns(customer?.concerns || []);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditBudget('');
+    setEditConcerns([]);
+    setNewConcern('');
+  };
+
+  const saveEditing = () => {
+    onUpdateCustomerInfo?.({
+      budget: editBudget || undefined,
+      concerns: editConcerns.length > 0 ? editConcerns : undefined,
+    });
+    setIsEditing(false);
+  };
+
+  const addConcern = () => {
+    if (newConcern.trim() && !editConcerns.includes(newConcern.trim())) {
+      setEditConcerns([...editConcerns, newConcern.trim()]);
+      setNewConcern('');
+    }
+  };
+
+  const removeConcern = (concern: string) => {
+    setEditConcerns(editConcerns.filter((c) => c !== concern));
   };
 
   if (!customer) {
@@ -49,11 +91,13 @@ export function CustomerSidebar({ customer, lead, onConvertToAppointment }: Cust
     icon: Icon,
     sectionKey,
     children,
+    action,
   }: {
     title: string;
     icon: any;
     sectionKey: string;
     children: React.ReactNode;
+    action?: React.ReactNode;
   }) => (
     <div className="border-b border-warm-gray-100 last:border-b-0">
       <button
@@ -64,11 +108,14 @@ export function CustomerSidebar({ customer, lead, onConvertToAppointment }: Cust
           <Icon className="w-4 h-4 text-warm-gray-500" />
           <span className="text-sm font-medium text-warm-gray-700">{title}</span>
         </div>
-        {expandedSections.includes(sectionKey) ? (
-          <ChevronUp className="w-4 h-4 text-warm-gray-400" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-warm-gray-400" />
-        )}
+        <div className="flex items-center gap-2">
+          {action}
+          {expandedSections.includes(sectionKey) ? (
+            <ChevronUp className="w-4 h-4 text-warm-gray-400" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-warm-gray-400" />
+          )}
+        </div>
       </button>
       {expandedSections.includes(sectionKey) && (
         <div className="px-4 pb-4">{children}</div>
@@ -97,6 +144,11 @@ export function CustomerSidebar({ customer, lead, onConvertToAppointment }: Cust
               转预约
             </Button>
           </div>
+          {lead?.consultant && (
+            <div className="mt-3 text-xs text-warm-gray-500">
+              负责咨询师：<span className="text-warm-gray-700 font-medium">{lead.consultant.name}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -123,7 +175,24 @@ export function CustomerSidebar({ customer, lead, onConvertToAppointment }: Cust
           </div>
         </Section>
 
-        <Section title="意向信息" icon={Star} sectionKey="intent">
+        <Section
+          title="意向信息"
+          icon={Star}
+          sectionKey="intent"
+          action={
+            !isEditing ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startEditing();
+                }}
+                className="p-1 text-warm-gray-400 hover:text-primary-600 transition-colors"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+            ) : null
+          }
+        >
           {lead ? (
             <div className="space-y-3 text-sm">
               <div>
@@ -141,27 +210,90 @@ export function CustomerSidebar({ customer, lead, onConvertToAppointment }: Cust
                   <span className="text-warm-gray-700">{lead.project}</span>
                 </div>
               </div>
-              {customer.budget && (
-                <div>
-                  <p className="text-warm-gray-500 text-xs mb-1">预算范围</p>
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="w-4 h-4 text-green-500" />
-                    <span className="text-warm-gray-700">{customer.budget}</span>
+
+              {isEditing ? (
+                <>
+                  <div>
+                    <p className="text-warm-gray-500 text-xs mb-1">预算范围</p>
+                    <div className="flex items-center gap-1">
+                      <DollarSign className="w-4 h-4 text-green-500" />
+                      <Input
+                        value={editBudget}
+                        onChange={(e) => setEditBudget(e.target.value)}
+                        placeholder="如：3-5万"
+                        className="flex-1 text-sm h-8"
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
-              {customer.concerns && customer.concerns.length > 0 && (
-                <div>
-                  <p className="text-warm-gray-500 text-xs mb-1">顾虑点</p>
-                  <div className="flex flex-wrap gap-1">
-                    {customer.concerns.map((concern, idx) => (
-                      <Badge key={idx} variant="warning" size="sm">
-                        <AlertCircle className="w-3 h-3 mr-0.5" />
-                        {concern}
-                      </Badge>
-                    ))}
+                  <div>
+                    <p className="text-warm-gray-500 text-xs mb-1">顾虑点</p>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {editConcerns.map((concern, idx) => (
+                        <Badge key={idx} variant="warning" size="sm" className="gap-1">
+                          {concern}
+                          <button
+                            onClick={() => removeConcern(concern)}
+                            className="hover:text-red-500"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={newConcern}
+                        onChange={(e) => setNewConcern(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addConcern()}
+                        placeholder="添加顾虑点"
+                        className="flex-1 text-sm h-8"
+                      />
+                      <button
+                        onClick={addConcern}
+                        className="p-1.5 bg-primary-100 text-primary-600 rounded-md hover:bg-primary-200 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" onClick={saveEditing}>
+                      <Check className="w-3.5 h-3.5" />
+                      保存
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={cancelEditing}>
+                      取消
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {customer.budget && (
+                    <div>
+                      <p className="text-warm-gray-500 text-xs mb-1">预算范围</p>
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="w-4 h-4 text-green-500" />
+                        <span className="text-warm-gray-700">{customer.budget}</span>
+                      </div>
+                    </div>
+                  )}
+                  {customer.concerns && customer.concerns.length > 0 && (
+                    <div>
+                      <p className="text-warm-gray-500 text-xs mb-1">顾虑点</p>
+                      <div className="flex flex-wrap gap-1">
+                        {customer.concerns.map((concern, idx) => (
+                          <Badge key={idx} variant="warning" size="sm">
+                            <AlertCircle className="w-3 h-3 mr-0.5" />
+                            {concern}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {!customer.budget && (!customer.concerns || customer.concerns.length === 0) && (
+                    <p className="text-xs text-warm-gray-400">点击右上角编辑补充预算和顾虑</p>
+                  )}
+                </>
               )}
             </div>
           ) : (

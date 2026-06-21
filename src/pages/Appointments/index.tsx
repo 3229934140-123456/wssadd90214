@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { appointments } from '@/data/appointments';
+import { useAppStore } from '@/store/useAppStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +20,7 @@ const statusFilters: { key: AppointmentStatus | 'all'; label: string; icon: any 
 ];
 
 export function Appointments() {
+  const appointments = useAppStore((state) => state.appointments);
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | 'all'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentDate, setCurrentDate] = useState(dayjs());

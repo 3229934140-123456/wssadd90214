@@ -32,6 +32,7 @@ export function LeadPool() {
   const currentUser = useAppStore((state) => state.currentUser);
   const leads = useAppStore((state) => state.leads);
   const claimLead = useAppStore((state) => state.claimLead);
+  const autoAssignLead = useAppStore((state) => state.autoAssignLead);
 
   const pendingLeads = useMemo(() => {
     return leads
@@ -47,6 +48,13 @@ export function LeadPool() {
   const handleClaim = (leadId: string) => {
     if (currentUser) {
       claimLead(leadId, currentUser.id);
+      navigate('/conversation');
+    }
+  };
+
+  const handleAutoAssign = (leadId: string) => {
+    const result = autoAssignLead(leadId);
+    if (result) {
       navigate('/conversation');
     }
   };
@@ -162,6 +170,7 @@ export function LeadPool() {
                 key={lead.id}
                 lead={lead}
                 onClaim={handleClaim}
+                onAutoAssign={handleAutoAssign}
                 showClaimButton={activeTab === 'pending'}
               />
             ))}

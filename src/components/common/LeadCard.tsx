@@ -1,4 +1,4 @@
-import { Clock, MessageCircle } from 'lucide-react';
+import { Clock, MessageCircle, Sparkles } from 'lucide-react';
 import type { Lead } from '@/types';
 import { SOURCE_LABELS, PROJECT_CATEGORY_LABELS, LEAD_STATUS_LABELS } from '@/types';
 import { Avatar } from '../ui/Avatar';
@@ -10,17 +10,23 @@ import dayjs from 'dayjs';
 interface LeadCardProps {
   lead: Lead;
   onClaim?: (leadId: string) => void;
+  onAutoAssign?: (leadId: string) => void;
   onView?: (lead: Lead) => void;
   showClaimButton?: boolean;
 }
 
-export function LeadCard({ lead, onClaim, onView, showClaimButton = false }: LeadCardProps) {
+export function LeadCard({ lead, onClaim, onAutoAssign, onView, showClaimButton = false }: LeadCardProps) {
   const isTimeout = (lead.waitTime || 0) > 10;
   const sourceVariant = lead.source === 'meituan' ? 'meituan' : 'xinyang';
 
   const handleClaim = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClaim?.(lead.id);
+  };
+
+  const handleAutoAssign = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAutoAssign?.(lead.id);
   };
 
   const formatWaitTime = (minutes: number) => {
@@ -103,10 +109,16 @@ export function LeadCard({ lead, onClaim, onView, showClaimButton = false }: Lea
           )}
         </div>
         {showClaimButton && lead.status === 'pending' ? (
-          <Button size="sm" onClick={handleClaim}>
-            <MessageCircle className="w-4 h-4" />
-            立即接待
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleAutoAssign}>
+              <Sparkles className="w-4 h-4" />
+              智能分配
+            </Button>
+            <Button size="sm" onClick={handleClaim}>
+              <MessageCircle className="w-4 h-4" />
+              立即接待
+            </Button>
+          </div>
         ) : (
           <Button variant="ghost" size="sm">
             查看详情

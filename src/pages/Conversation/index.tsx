@@ -3,13 +3,16 @@ import { useAppStore } from '@/store/useAppStore';
 import { ConversationList } from './ConversationList';
 import { ChatWindow } from './ChatWindow';
 import { CustomerSidebar } from './CustomerSidebar';
+import { AppointmentModal } from '@/components/common/AppointmentModal';
 import type { Conversation, Message } from '@/types';
-import { messages as initialMessages } from '@/data/messages';
 
 export function ConversationPage() {
   const currentUser = useAppStore((state) => state.currentUser);
   const allConversations = useAppStore((state) => state.conversations);
+  const allMessages = useAppStore((state) => state.messages);
   const sendMessage = useAppStore((state) => state.sendMessage);
+  const convertToAppointment = useAppStore((state) => state.convertToAppointment);
+  const updateCustomerInfo = useAppStore((state) => state.updateCustomerInfo);
 
   const activeConversations = useMemo(() => {
     return allConversations
@@ -20,8 +23,12 @@ export function ConversationPage() {
   }, [allConversations]);
 
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [showCustomerSidebar, setShowCustomerSidebar] = useState(true);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+
+  const messages = selectedConversation
+    ? allMessages[selectedConversation.id] || []
+    : [];
 
   useEffect(() => {
     if (activeConversations.length > 0 && !selectedConversation) {
@@ -29,44 +36,50 @@ export function ConversationPage() {
     }
   }, [activeConversations, selectedConversation]);
 
-  useEffect(() => {
-    if (selectedConversation) {
-      const convMessages = initialMessages[selectedConversation.id] || [];
-      setMessages(convMessages);
-    } else {
-      setMessages([]);
-    }
-  }, [selectedConversation]);
-
   const handleSendMessage = (content: string) => {
     if (!selectedConversation || !currentUser) return;
-
-    const newMessage: Message = {
-      id: `msg_${Date.now()}`,
-      conversationId: selectedConversation.id,
-      senderType: 'consultant',
-      senderId: currentUser.id,
-      content,
-      timestamp: new Date().toISOString(),
-      type: 'text',
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
     sendMessage(selectedConversation.id, content, currentUser.id);
   };
 
   const handleConvertToAppointment = () => {
-    alert('转预约功能 - 实际项目中会打开预约弹窗');
+    setShowAppointmentModal(true);
   };
 
-  const sortedConversations = [...allConversations].sort((a, b) =>
-    new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime()
-  );
+  const handleAppointmentConfirm = (appointmentTime: string, note: string) => {
+    if (!selectedConversation) return;
+    convertToAppointment(selectedConversation.leadId, { appointmentTime, note });
+    setSelectedConversation(null);
+    setTimeout(() => {
+      if (activeConversations.length > 0) {
+        setSelectedConversation(activeConversations[0]);
+      }
+    }, 100);
+  };
+
+  const handleUpdateCustomerInfo = (updates: { budget?: string; concerns?: string[] }) => {
+    if (!selectedConversation) return;
+    updateCustomerInfo(selectedConversation.customer.id, updates);
+  };
+
+  const currentLead = selectedConversation
+    ? {
+        id: selectedConversation.leadId,
+        customerId: selectedConversation.customer.id,
+        customer: selectedConversation.customer,
+        source: 'meituan' as const,
+        project: '咨询项目',
+        projectCategory: 'other' as const,
+        status: 'in_conversation' as const,
+        consultantId: selectedConversation.consultant.id,
+        consultant: selectedConversation.consultant,
+        createdAt: selectedConversation.startTime,
+      }
+    : null;
 
   return (
     <div className="h-full flex">
       <ConversationList
-        conversations={sortedConversations}
+        conversations={activeConversations}
         selectedId={selectedConversation?.id || null}
         onSelect={setSelectedConversation}
       />
@@ -80,10 +93,20 @@ export function ConversationPage() {
       {showCustomerSidebar && (
         <CustomerSidebar
           customer={selectedConversation?.customer || null}
-          lead={null}
+          lead={currentLead}
           onConvertToAppointment={handleConvertToAppointment}
+          onUpdateCustomerInfo={handleUpdateCustomerInfo}
         />
       )}
+
+      <AppointmentModal
+        isOpen={showAppointmentModal}
+        onClose={() => setShowAppointmentModal(false)}
+        onConfirm={handleAppointmentConfirm}
+        customer={selectedConversation?.customer || null}
+        project={currentLead?.project}
+        projectCategory={currentLead?.projectCategory}
+      />
     </div>
   );
 }
