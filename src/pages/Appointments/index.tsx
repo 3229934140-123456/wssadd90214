@@ -28,13 +28,15 @@ export function Appointments() {
   const [currentDate, setCurrentDate] = useState(dayjs());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [highIntentionOnly, setHighIntentionOnly] = useState(false);
 
   const filteredAppointments = useMemo(() => {
     return appointments.filter(apt => {
       if (statusFilter !== 'all' && apt.status !== statusFilter) return false;
+      if (highIntentionOnly && apt.customer.intentionLevel !== 'high') return false;
       return true;
     });
-  }, [appointments, statusFilter]);
+  }, [appointments, statusFilter, highIntentionOnly]);
 
   const getStatusVariant = (status: AppointmentStatus) => {
     switch (status) {
@@ -78,7 +80,18 @@ export function Appointments() {
   };
 
   const getAppointmentsForDate = (date: dayjs.Dayjs) => {
-    return appointments.filter(apt => dayjs(apt.appointmentTime).isSame(date, 'day'));
+    return filteredAppointments.filter(apt => dayjs(apt.appointmentTime).isSame(date, 'day'));
+  };
+
+  const getStatusBorderClass = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'pending': return 'border-l-4 border-l-amber-500 bg-amber-50/50';
+      case 'confirmed': return 'border-l-4 border-l-primary-500 bg-primary-50/50';
+      case 'arrived': return 'border-l-4 border-l-green-500 bg-green-50/50';
+      case 'cancelled': return 'border-l-4 border-l-warm-gray-400 bg-warm-gray-50';
+      case 'no_show': return 'border-l-4 border-l-red-500 bg-red-50/50';
+      default: return '';
+    }
   };
 
   const openDetail = (apt: Appointment) => {
@@ -105,6 +118,13 @@ export function Appointments() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant={highIntentionOnly ? 'primary' : 'outline'}
+              onClick={() => setHighIntentionOnly(!highIntentionOnly)}
+            >
+              <Star className={cn('w-4 h-4', highIntentionOnly && 'fill-white')} />
+              高意向
+            </Button>
             <div className="flex bg-warm-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('list')}
@@ -358,19 +378,30 @@ export function Appointments() {
                           <div
                             key={apt.id}
                             onClick={(e) => { e.stopPropagation(); openDetail(apt); }}
-                            className="text-xs px-1.5 py-0.5 rounded bg-primary-50 text-primary-700 truncate cursor-pointer hover:bg-primary-100"
-                            title={`${apt.customer.name} - ${apt.project}`}
-                          >
-                            {dayjs(apt.appointmentTime).format('HH:mm')} {apt.customer.name}
-                            {apt.customer.intentionLevel === 'high' && (
-                              <span className="ml-0.5 text-red-500">★</span>
+                            className={cn(
+                              'text-xs px-1.5 py-1 rounded truncate cursor-pointer transition-colors font-medium',
+                              getStatusBorderClass(apt.status),
+                              apt.status === 'pending' && 'text-amber-700',
+                              apt.status === 'confirmed' && 'text-primary-700',
+                              apt.status === 'arrived' && 'text-green-700',
+                              apt.status === 'cancelled' && 'text-warm-gray-500',
+                              apt.status === 'no_show' && 'text-red-700',
                             )}
+                            title={`${apt.customer.name} - ${apt.project} - ${APPOINTMENT_STATUS_LABELS[apt.status]}`}
+                          >
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono text-[10px] opacity-70">{dayjs(apt.appointmentTime).format('HH:mm')}</span>
+                              <span className="truncate">{apt.customer.name}</span>
+                              {apt.customer.intentionLevel === 'high' && (
+                                <span className="text-red-500 text-xs flex-shrink-0" title="高意向">★</span>
+                              )}
+                            </div>
                           </div>
                         ))}
                         {dayAppointments.length > 2 && (
                           <div
                             onClick={(e) => { e.stopPropagation(); openDetail(dayAppointments[2]); }}
-                            className="text-xs text-warm-gray-400 cursor-pointer hover:text-warm-gray-600"
+                            className="text-xs text-warm-gray-400 cursor-pointer hover:text-warm-gray-600 pl-1"
                           >
                             +{dayAppointments.length - 2} 更多
                           </div>

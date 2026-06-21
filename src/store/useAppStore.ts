@@ -24,7 +24,7 @@ interface AppState {
   markLeadInvalid: (leadId: string, reason: string) => void;
   convertToAppointment: (leadId: string, conversationId: string, appointmentData: Partial<Appointment>) => Appointment | null;
   hasPendingAppointment: (customerId: string) => boolean;
-  updateAppointmentStatus: (appointmentId: string, status: Appointment['status']) => void;
+  updateAppointmentStatus: (appointmentId: string, status: Appointment['status'], operatorInfo?: { operatorId?: string; operatorName?: string; remark?: string }) => void;
   getAppointmentById: (appointmentId: string) => Appointment | undefined;
 
   sendMessage: (conversationId: string, content: string, senderId: string) => void;
@@ -174,6 +174,15 @@ export const useAppStore = create<AppState>()(
           projectCategory: lead.projectCategory,
           appointmentTime: appointmentData.appointmentTime || now,
           status: 'pending',
+          statusHistory: [
+            {
+              status: 'pending',
+              timestamp: now,
+              operatorId: lead.consultantId,
+              operatorName: lead.consultant?.name,
+              remark: '会话转出',
+            },
+          ],
           note: appointmentData.note,
           createdAt: now,
         };
@@ -291,10 +300,26 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
-      updateAppointmentStatus: (appointmentId, status) => {
+      updateAppointmentStatus: (appointmentId, status, operatorInfo) => {
+        const now = new Date().toISOString();
         set((state) => ({
           appointments: state.appointments.map(a =>
-            a.id === appointmentId ? { ...a, status } : a
+            a.id === appointmentId
+              ? {
+                  ...a,
+                  status,
+                  statusHistory: [
+                    ...a.statusHistory,
+                    {
+                      status,
+                      timestamp: now,
+                      operatorId: operatorInfo?.operatorId,
+                      operatorName: operatorInfo?.operatorName,
+                      remark: operatorInfo?.remark,
+                    },
+                  ],
+                }
+              : a
           ),
         }));
       },

@@ -102,8 +102,17 @@ export interface Appointment {
   projectCategory: ProjectCategory;
   appointmentTime: string;
   status: AppointmentStatus;
+  statusHistory: AppointmentStatusRecord[];
   note?: string;
   createdAt: string;
+}
+
+export interface AppointmentStatusRecord {
+  status: AppointmentStatus;
+  timestamp: string;
+  operatorId?: string;
+  operatorName?: string;
+  remark?: string;
 }
 
 export interface QualityDimensions {

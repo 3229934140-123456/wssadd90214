@@ -8,6 +8,15 @@ const daysFromNow = (days: number, hour: number, minute: number) => {
   return date.toISOString();
 };
 
+const makeHistory = (events: { status: Appointment['status']; daysOffset: number; hour: number; minute: number; operatorName?: string; remark?: string }[]) => {
+  return events.map(e => ({
+    status: e.status,
+    timestamp: daysFromNow(e.daysOffset, e.hour, e.minute),
+    operatorName: e.operatorName,
+    remark: e.remark,
+  }));
+};
+
 export const appointments: Appointment[] = [
   {
     id: 'a001',
@@ -19,6 +28,10 @@ export const appointments: Appointment[] = [
     projectCategory: 'antiaging',
     appointmentTime: daysFromNow(0, 14, 30),
     status: 'confirmed',
+    statusHistory: makeHistory([
+      { status: 'pending', daysOffset: -2, hour: 10, minute: 0, operatorName: '王诗涵', remark: '会话转出' },
+      { status: 'confirmed', daysOffset: -2, hour: 11, minute: 30, operatorName: '前台小李' },
+    ]),
     note: '客户比较在意维持时间，建议到院后重点说明',
     createdAt: daysFromNow(-2, 10, 0),
   },
@@ -32,6 +45,9 @@ export const appointments: Appointment[] = [
     projectCategory: 'antiaging',
     appointmentTime: daysFromNow(0, 16, 0),
     status: 'pending',
+    statusHistory: makeHistory([
+      { status: 'pending', daysOffset: -1, hour: 15, minute: 0, operatorName: '陈思语', remark: '会话转出' },
+    ]),
     note: '首次到院，需要详细介绍',
     createdAt: daysFromNow(-1, 15, 0),
   },
@@ -45,6 +61,10 @@ export const appointments: Appointment[] = [
     projectCategory: 'antiaging',
     appointmentTime: daysFromNow(1, 10, 0),
     status: 'confirmed',
+    statusHistory: makeHistory([
+      { status: 'pending', daysOffset: -3, hour: 11, minute: 0, operatorName: '李美琪', remark: '会话转出' },
+      { status: 'confirmed', daysOffset: -3, hour: 14, minute: 20, operatorName: '前台小王' },
+    ]),
     note: 'VIP客户，需提前安排好房间',
     createdAt: daysFromNow(-3, 11, 0),
   },
@@ -58,6 +78,9 @@ export const appointments: Appointment[] = [
     projectCategory: 'breast',
     appointmentTime: daysFromNow(5, 9, 30),
     status: 'pending',
+    statusHistory: makeHistory([
+      { status: 'pending', daysOffset: 0, hour: 10, minute: 0, operatorName: '李美琪', remark: '会话转出' },
+    ]),
     note: '高意向客户，重点跟进',
     createdAt: daysFromNow(0, 10, 0),
   },
@@ -71,6 +94,10 @@ export const appointments: Appointment[] = [
     projectCategory: 'rhinoplasty',
     appointmentTime: daysFromNow(2, 14, 0),
     status: 'confirmed',
+    statusHistory: makeHistory([
+      { status: 'pending', daysOffset: -1, hour: 9, minute: 0, operatorName: '张雅婷', remark: '会话转出' },
+      { status: 'confirmed', daysOffset: -1, hour: 10, minute: 15, operatorName: '前台小李' },
+    ]),
     note: '担心疼痛，需提前做好安抚',
     createdAt: daysFromNow(-1, 9, 0),
   },
@@ -84,6 +111,11 @@ export const appointments: Appointment[] = [
     projectCategory: 'skin',
     appointmentTime: daysFromNow(-1, 11, 0),
     status: 'arrived',
+    statusHistory: makeHistory([
+      { status: 'pending', daysOffset: -5, hour: 10, minute: 0, operatorName: '王诗涵', remark: '会话转出' },
+      { status: 'confirmed', daysOffset: -5, hour: 11, minute: 30, operatorName: '前台小王' },
+      { status: 'arrived', daysOffset: -1, hour: 11, minute: 5, operatorName: '前台小李' },
+    ]),
     note: '已到院，已完成项目',
     createdAt: daysFromNow(-5, 10, 0),
   },
@@ -97,6 +129,11 @@ export const appointments: Appointment[] = [
     projectCategory: 'other',
     appointmentTime: daysFromNow(-1, 15, 0),
     status: 'no_show',
+    statusHistory: makeHistory([
+      { status: 'pending', daysOffset: -3, hour: 14, minute: 0, operatorName: '刘思琪', remark: '会话转出' },
+      { status: 'confirmed', daysOffset: -3, hour: 16, minute: 0, operatorName: '前台小李' },
+      { status: 'no_show', daysOffset: -1, hour: 16, minute: 0, operatorName: '前台小王', remark: '电话无人接听' },
+    ]),
     note: '客户未到院，电话无人接听',
     createdAt: daysFromNow(-3, 14, 0),
   },

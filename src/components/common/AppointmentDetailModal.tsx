@@ -12,7 +12,7 @@ import {
   AlertCircle,
   DollarSign,
   Star,
-  ArrowRight,
+  History,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import type { Appointment, Message, AppointmentStatus } from '@/types';
@@ -21,7 +21,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import type { ButtonVariant } from '@/components/ui/Button';
-import { AlertCircle as AlertIcon } from 'lucide-react';
 import dayjs from 'dayjs';
 
 interface AppointmentDetailModalProps {
@@ -31,7 +30,7 @@ interface AppointmentDetailModalProps {
 }
 
 const STATUS_ACTIONS: { status: AppointmentStatus; label: string; icon: any; variant: ButtonVariant }[] = [
-  { status: 'confirmed', label: '确认到院', icon: CheckCircle, variant: 'success' },
+  { status: 'confirmed', label: '确认预约', icon: CheckCircle, variant: 'success' },
   { status: 'arrived', label: '已到院', icon: CheckCircle, variant: 'success' },
   { status: 'no_show', label: '未到院', icon: XCircle, variant: 'outline' },
   { status: 'cancelled', label: '取消', icon: XCircle, variant: 'danger' },
@@ -40,7 +39,8 @@ const STATUS_ACTIONS: { status: AppointmentStatus; label: string; icon: any; var
 export function AppointmentDetailModal({ isOpen, onClose, appointment }: AppointmentDetailModalProps) {
   const allMessages = useAppStore((state) => state.messages);
   const updateAppointmentStatus = useAppStore((state) => state.updateAppointmentStatus);
-  const [activeTab, setActiveTab] = useState<'info' | 'chat'>('info');
+  const currentUser = useAppStore((state) => state.currentUser);
+  const [activeTab, setActiveTab] = useState<'info' | 'timeline' | 'chat'>('info');
 
   if (!isOpen || !appointment) return null;
 
@@ -49,7 +49,10 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
     : [];
 
   const handleStatusChange = (status: AppointmentStatus) => {
-    updateAppointmentStatus(appointment.id, status);
+    updateAppointmentStatus(appointment.id, status, {
+      operatorId: currentUser?.id,
+      operatorName: currentUser?.name,
+    });
   };
 
   const MessageBubble = ({ message }: { message: Message }) => {
@@ -103,7 +106,19 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
     );
   };
 
+  const statusIconColor = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'pending': return 'bg-amber-500';
+      case 'confirmed': return 'bg-primary-500';
+      case 'arrived': return 'bg-green-500';
+      case 'cancelled': return 'bg-warm-gray-400';
+      case 'no_show': return 'bg-red-500';
+      default: return 'bg-warm-gray-400';
+    }
+  };
+
   const availableActions = STATUS_ACTIONS.filter(a => a.status !== appointment.status);
+  const history = appointment.statusHistory || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -115,9 +130,7 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
             </div>
             <div>
               <h3 className="text-lg font-serif font-semibold text-warm-gray-800">预约详情</h3>
-              <p className="text-sm text-warm-gray-500">
-                {appointment.project}
-              </p>
+              <p className="text-sm text-warm-gray-500">{appointment.project}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -143,6 +156,22 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
             <FileText className="w-4 h-4 inline mr-1.5" />
             预约信息
           </button>
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'timeline'
+                ? 'text-primary-600 border-b-2 border-primary-500'
+                : 'text-warm-gray-500 hover:text-warm-gray-700'
+            }`}
+          >
+            <History className="w-4 h-4 inline mr-1.5" />
+            跟进记录
+            {history.length > 0 && (
+              <Badge variant="primary" size="sm" className="ml-1">
+                {history.length}
+              </Badge>
+            )}
+          </button>
           {appointment.conversationId && (
             <button
               onClick={() => setActiveTab('chat')}
@@ -164,7 +193,7 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {activeTab === 'info' ? (
+          {activeTab === 'info' && (
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-warm-gray-50 rounded-lg">
@@ -209,7 +238,7 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
                 <div className="mt-3 pt-3 border-t border-warm-gray-200 space-y-2">
                   {appointment.customer.intentionLevel && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Star className={`w-4 h-4 ${appointment.customer.intentionLevel === 'high' ? 'text-red-500' : 'text-amber-500'}`} />
+                      <Star className={`w-4 h-4 ${appointment.customer.intentionLevel === 'high' ? 'text-red-500 fill-red-500' : 'text-amber-500 fill-amber-500'}`} />
                       <span className="text-warm-gray-600">
                         意向等级：
                         <span className={appointment.customer.intentionLevel === 'high' ? 'text-red-600 font-medium' : 'text-warm-gray-700'}>
@@ -276,6 +305,12 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
                       </p>
                     )}
                   </div>
+                  <button
+                    onClick={() => setActiveTab('chat')}
+                    className="mt-3 text-xs text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    查看完整会话 →
+                  </button>
                 </div>
               )}
 
@@ -286,7 +321,63 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
                 </div>
               )}
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'timeline' && (
+            <div className="p-6">
+              {history.length === 0 ? (
+                <p className="text-sm text-warm-gray-400 text-center py-12">暂无跟进记录</p>
+              ) : (
+                <div className="relative">
+                  <div className="absolute left-[11px] top-1 bottom-1 w-0.5 bg-warm-gray-200" />
+                  <div className="space-y-6">
+                    {history.map((record, idx) => (
+                      <div key={idx} className="relative flex gap-4">
+                        <div className={`w-6 h-6 rounded-full ${statusIconColor(record.status)} flex-shrink-0 z-10 flex items-center justify-center ring-4 ring-white`}>
+                          {record.status === 'arrived' || record.status === 'confirmed' ? (
+                            <CheckCircle className="w-3 h-3 text-white" />
+                          ) : record.status === 'cancelled' || record.status === 'no_show' ? (
+                            <XCircle className="w-3 h-3 text-white" />
+                          ) : (
+                            <Clock className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 pb-1">
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={
+                                record.status === 'pending' ? 'warning' :
+                                record.status === 'confirmed' ? 'primary' :
+                                record.status === 'arrived' ? 'success' :
+                                record.status === 'no_show' ? 'danger' : 'default'
+                              }
+                              size="sm"
+                            >
+                              {APPOINTMENT_STATUS_LABELS[record.status]}
+                            </Badge>
+                            {record.remark && (
+                              <span className="text-xs text-warm-gray-500">· {record.remark}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-warm-gray-400">
+                            <span>{dayjs(record.timestamp).format('YYYY-MM-DD HH:mm')}</span>
+                            {record.operatorName && (
+                              <span className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {record.operatorName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'chat' && (
             <div className="p-6">
               <div className="bg-warm-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
                 {conversationMessages.length === 0 ? (
