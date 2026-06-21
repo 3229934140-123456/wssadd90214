@@ -4,15 +4,15 @@ import { ConversationList } from './ConversationList';
 import { ChatWindow } from './ChatWindow';
 import { CustomerSidebar } from './CustomerSidebar';
 import { AppointmentModal } from '@/components/common/AppointmentModal';
-import type { Conversation, Message } from '@/types';
+import type { Conversation } from '@/types';
 
 export function ConversationPage() {
   const currentUser = useAppStore((state) => state.currentUser);
   const allConversations = useAppStore((state) => state.conversations);
   const allMessages = useAppStore((state) => state.messages);
+  const leads = useAppStore((state) => state.leads);
   const sendMessage = useAppStore((state) => state.sendMessage);
   const convertToAppointment = useAppStore((state) => state.convertToAppointment);
-  const updateCustomerInfo = useAppStore((state) => state.updateCustomerInfo);
 
   const activeConversations = useMemo(() => {
     return allConversations
@@ -47,7 +47,7 @@ export function ConversationPage() {
 
   const handleAppointmentConfirm = (appointmentTime: string, note: string) => {
     if (!selectedConversation) return;
-    convertToAppointment(selectedConversation.leadId, { appointmentTime, note });
+    convertToAppointment(selectedConversation.leadId, selectedConversation.id, { appointmentTime, note });
     setSelectedConversation(null);
     setTimeout(() => {
       if (activeConversations.length > 0) {
@@ -56,24 +56,11 @@ export function ConversationPage() {
     }, 100);
   };
 
-  const handleUpdateCustomerInfo = (updates: { budget?: string; concerns?: string[] }) => {
-    if (!selectedConversation) return;
-    updateCustomerInfo(selectedConversation.customer.id, updates);
-  };
-
   const currentLead = selectedConversation
-    ? {
-        id: selectedConversation.leadId,
-        customerId: selectedConversation.customer.id,
-        customer: selectedConversation.customer,
-        source: 'meituan' as const,
-        project: '咨询项目',
-        projectCategory: 'other' as const,
-        status: 'in_conversation' as const,
-        consultantId: selectedConversation.consultant.id,
-        consultant: selectedConversation.consultant,
-        createdAt: selectedConversation.startTime,
-      }
+    ? (() => {
+        const lead = leads.find(l => l.id === selectedConversation.leadId);
+        return lead || null;
+      })()
     : null;
 
   return (
@@ -92,10 +79,9 @@ export function ConversationPage() {
 
       {showCustomerSidebar && (
         <CustomerSidebar
-          customer={selectedConversation?.customer || null}
+          customerId={selectedConversation?.customer.id || null}
           lead={currentLead}
           onConvertToAppointment={handleConvertToAppointment}
-          onUpdateCustomerInfo={handleUpdateCustomerInfo}
         />
       )}
 

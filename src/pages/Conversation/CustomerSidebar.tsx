@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   User,
-  Clock,
   Calendar,
   DollarSign,
   AlertCircle,
@@ -17,6 +16,7 @@ import {
   X,
   Plus,
 } from 'lucide-react';
+import { useAppStore } from '@/store/useAppStore';
 import type { Customer, Lead } from '@/types';
 import { PROJECT_CATEGORY_LABELS, SOURCE_LABELS } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
@@ -27,13 +27,27 @@ import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 
 interface CustomerSidebarProps {
-  customer: Customer | null;
+  customerId: string | null;
   lead?: Lead | null;
   onConvertToAppointment?: () => void;
-  onUpdateCustomerInfo?: (updates: { budget?: string; concerns?: string[] }) => void;
 }
 
-export function CustomerSidebar({ customer, lead, onConvertToAppointment, onUpdateCustomerInfo }: CustomerSidebarProps) {
+export function CustomerSidebar({ customerId, lead, onConvertToAppointment }: CustomerSidebarProps) {
+  const conversations = useAppStore((state) => state.conversations);
+  const leads = useAppStore((state) => state.leads);
+  const updateCustomerInfo = useAppStore((state) => state.updateCustomerInfo);
+  const hasPendingAppointment = useAppStore((state) => state.hasPendingAppointment);
+
+  const customer = customerId
+    ? (() => {
+        const fromLead = leads.find(l => l.customerId === customerId);
+        if (fromLead) return fromLead.customer;
+        const fromConv = conversations.find(c => c.customer.id === customerId);
+        if (fromConv) return fromConv.customer;
+        return null;
+      })()
+    : null;
+
   const [expandedSections, setExpandedSections] = useState<string[]>(['basic', 'intent']);
   const [isEditing, setIsEditing] = useState(false);
   const [editBudget, setEditBudget] = useState('');
@@ -60,7 +74,8 @@ export function CustomerSidebar({ customer, lead, onConvertToAppointment, onUpda
   };
 
   const saveEditing = () => {
-    onUpdateCustomerInfo?.({
+    if (!customerId) return;
+    updateCustomerInfo(customerId, {
       budget: editBudget || undefined,
       concerns: editConcerns.length > 0 ? editConcerns : undefined,
     });
@@ -85,6 +100,8 @@ export function CustomerSidebar({ customer, lead, onConvertToAppointment, onUpda
       </div>
     );
   }
+
+  const alreadyHasAppointment = customerId ? hasPendingAppointment(customerId) : false;
 
   const Section = ({
     title,
@@ -139,13 +156,20 @@ export function CustomerSidebar({ customer, lead, onConvertToAppointment, onUpda
               <Phone className="w-3.5 h-3.5" />
               拨打电话
             </Button>
-            <Button size="sm" onClick={onConvertToAppointment}>
+            <Button
+              size="sm"
+              onClick={onConvertToAppointment}
+              variant={alreadyHasAppointment ? 'outline' : 'primary'}
+            >
               <Calendar className="w-3.5 h-3.5" />
-              转预约
+              {alreadyHasAppointment ? '已预约' : '转预约'}
             </Button>
           </div>
+          {alreadyHasAppointment && (
+            <p className="text-xs text-amber-600 mt-2">该客户已有待确认/已确认预约</p>
+          )}
           {lead?.consultant && (
-            <div className="mt-3 text-xs text-warm-gray-500">
+            <div className="mt-2 text-xs text-warm-gray-500">
               负责咨询师：<span className="text-warm-gray-700 font-medium">{lead.consultant.name}</span>
             </div>
           )}

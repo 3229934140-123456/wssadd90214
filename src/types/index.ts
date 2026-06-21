@@ -87,6 +87,7 @@ export interface QuickReply {
 
 export interface Appointment {
   id: string;
+  conversationId?: string;
   customerId: string;
   customer: Customer;
   consultantId: string;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -171,6 +171,12 @@ export function Appointments() {
                         </span>
                         <span>{apt.project}</span>
                         <span>咨询师：{apt.consultant.name}</span>
+                        {apt.conversationId && (
+                          <span className="flex items-center gap-1 text-primary-500">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            来自会话
+                          </span>
+                        )}
                       </div>
                       {apt.note && (
                         <p className="text-xs text-warm-gray-400 mt-1 bg-warm-gray-50 px-2 py-1 rounded inline-block">

@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Users, Search, Filter, Phone, Calendar, Tag } from 'lucide-react';
-import { customers } from '@/data/customers';
+import { useState, useMemo } from 'react';
+import { Users, Search, Filter, Phone, Calendar, Tag, DollarSign, AlertCircle } from 'lucide-react';
+import { useAppStore } from '@/store/useAppStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
@@ -9,6 +9,32 @@ import { Card, CardBody } from '@/components/ui/Card';
 import dayjs from 'dayjs';
 
 export function Customers() {
+  const leads = useAppStore((state) => state.leads);
+  const conversations = useAppStore((state) => state.conversations);
+
+  const customers = useMemo(() => {
+    const seen = new Map<string, { id: string; name: string; phone: string; age: number; gender: 'female' | 'male'; avatar: string; tags: string[]; budget?: string; concerns?: string[]; createdAt: string }>();
+    for (const l of leads) {
+      if (!seen.has(l.customerId)) {
+        seen.set(l.customerId, l.customer);
+      } else {
+        const existing = seen.get(l.customerId)!;
+        const updated = { ...existing, ...l.customer };
+        seen.set(l.customerId, updated);
+      }
+    }
+    for (const c of conversations) {
+      if (!seen.has(c.customer.id)) {
+        seen.set(c.customer.id, c.customer);
+      } else {
+        const existing = seen.get(c.customer.id)!;
+        const updated = { ...existing, ...c.customer };
+        seen.set(c.customer.id, updated);
+      }
+    }
+    return Array.from(seen.values());
+  }, [leads, conversations]);
+
   const [searchText, setSearchText] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -86,38 +112,59 @@ export function Customers() {
       <div className="flex-1 overflow-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredCustomers.map(customer => (
-          <Card key={customer.id} hoverable className="cursor-pointer">
-            <CardBody>
-              <div className="flex items-start gap-3">
-                <Avatar src={customer.avatar} alt={customer.name} size="lg" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-warm-gray-800">{customer.name}</h3>
-                  <p className="text-sm text-warm-gray-500">{customer.gender === 'female' ? '女' : '男'} · {customer.age}岁</p>
-                  <div className="flex items-center gap-1 mt-1 text-xs text-warm-gray-400">
-                    <Phone className="w-3 h-3" />
-                    {customer.phone}
+            <Card key={customer.id} hoverable className="cursor-pointer">
+              <CardBody>
+                <div className="flex items-start gap-3">
+                  <Avatar src={customer.avatar} alt={customer.name} size="lg" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-warm-gray-800">{customer.name}</h3>
+                    <p className="text-sm text-warm-gray-500">{customer.gender === 'female' ? '女' : '男'} · {customer.age}岁</p>
+                    <div className="flex items-center gap-1 mt-1 text-xs text-warm-gray-400">
+                      <Phone className="w-3 h-3" />
+                      {customer.phone}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex flex-wrap gap-1 mt-3">
-                {customer.tags.map((tag, idx) => (
-                  <Badge key={idx} variant={tag === '高意向' ? 'primary' : 'default'} size="sm">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-warm-gray-100">
-                <div className="flex items-center gap-1 text-xs text-warm-gray-400">
-                  <Calendar className="w-3 h-3" />
-                  添加于 {dayjs(customer.createdAt).format('MM-DD')}
+                <div className="flex flex-wrap gap-1 mt-3">
+                  {customer.tags.map((tag, idx) => (
+                    <Badge key={idx} variant={tag === '高意向' ? 'primary' : 'default'} size="sm">
+                      {tag}
+                    </Badge>
+                  ))}
                 </div>
-                <Button variant="ghost" size="sm">查看详情</Button>
-              </div>
-            </CardBody>
-          </Card>
-        ))}
+
+                {(customer.budget || (customer.concerns && customer.concerns.length > 0)) && (
+                  <div className="mt-3 pt-3 border-t border-warm-gray-100 space-y-2">
+                    {customer.budget && (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <DollarSign className="w-3.5 h-3.5 text-green-500" />
+                        <span className="text-warm-gray-600">预算：{customer.budget}</span>
+                      </div>
+                    )}
+                    {customer.concerns && customer.concerns.length > 0 && (
+                      <div className="flex items-start gap-1.5 text-sm">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5" />
+                        <div className="flex flex-wrap gap-1">
+                          {customer.concerns.map((concern, idx) => (
+                            <Badge key={idx} variant="warning" size="sm">{concern}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-warm-gray-100">
+                  <div className="flex items-center gap-1 text-xs text-warm-gray-400">
+                    <Calendar className="w-3 h-3" />
+                    添加于 {dayjs(customer.createdAt).format('MM-DD')}
+                  </div>
+                  <Button variant="ghost" size="sm">查看详情</Button>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
         </div>
       </div>
     </div>
